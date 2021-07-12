@@ -37,7 +37,7 @@ public class Cliente {
 
     }
 
-    private Integer calculaIdade(LocalDate dataNascimento) {
+    public Integer calculaIdade(LocalDate dataNascimento) {
         LocalDate hoje = LocalDate.now();
         return hoje.compareTo(dataNascimento);
     }
