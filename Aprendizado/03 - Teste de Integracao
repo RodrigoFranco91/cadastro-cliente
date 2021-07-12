@@ -1,0 +1,70 @@
+Teste de Integração - Java, Spring e Mockito.
+
+Agora vamos simular uma requisição cujo retorno será um 404 - Not Found, mas agora vamos validar sua mensagem de erro. No caso vou 
+fazer uma requisição para cadastrar Cliente sem nome, vai dar um 404 e haverá uma mensagem amigável ao usuário, pois eu criei as 
+classes: ValidationErrorHandler e ValidationErrorDto para fazer essa mensagem amigável!
+
+1) Na classe ClienteControllerTest criar o método:
+
+    @Test
+    void deveRetornarBadRequestAoCadastrarClienteSemNome(){
+        
+    }
+
+2) Fazer a lógica que irá fazer a requisição de cadastro de Cliente sem Nome. Ficará assim:
+
+    @Test
+    void deveRetornarBadRequestAoCadastrarClienteSemNome() throws Exception {
+
+        ClienteRequest request = new ClienteRequest("", "664.426.470-05", "rodrigo@gmail.com", "37552162", "100");
+        request.setDataNascimento(LocalDate.of(1991, 7, 1));
+        String json = jsonMapper.writeValueAsString(request);
+
+        Mockito.when(sistemaEndereco.consulta("37552162")).thenReturn(new EnderecoResponse("Rua Mariana", "Santo Antonio", "Pouso", 
+"MG"));
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$..campo").value("nome"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$..erro").value("must not be blank"));
+
+        /*
+        Para testar Expressao Json Path: https://jsonpath.com/
+         */
+
+    }
+    
+    Lembre-se o atributo .jsonPath() tem que ser uma expression jason path. Para ver se estamos acertando em criar essa expressao 
+    podemos usar o site https://jsonpath.com/
+    
+3) Fazendo Json Path Expression com diversos campos, no caso vamos tentar cadastrar Cliente sem nome e sem CPF. Ficará assim:
+
+@Test
+    void deveRetornarBadRequestAoCadastrarClienteSemNomeESemCPF() throws Exception {
+
+        ClienteRequest request = new ClienteRequest("", "", "rodrigo@gmail.com", "37552162", "100");
+        request.setDataNascimento(LocalDate.of(1991, 7, 1));
+        String json = jsonMapper.writeValueAsString(request);
+
+        Mockito.when(sistemaEndereco.consulta("37552162")).thenReturn(new EnderecoResponse("Rua Mariana", "Santo Antonio", "Pouso", 
+"MG"));
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.[:2].campo").value(Matchers.containsInAnyOrder(Matchers.is("nome"), 
+Matchers.is("cpf"))))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.[:2].erro").value(Matchers.containsInAnyOrder(Matchers.is("must not be 
+blank"), Matchers.is("invalid Brazilian individual taxpayer registry number (CPF)"))));
+        
+        /*
+        Para testar Expressao Json Path: https://jsonpath.com/
+         */
+
+    }
+    
+    Obs: Tivemos que usar o Matchers.containsInAnyOrder, pois cada hora o erro vem em uma posição e saber sua posição não é relevante
+    Com Matchers.containsInAnyOrder confirmamos apenas sem existe o erro e sua mensagem!

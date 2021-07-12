@@ -3,6 +3,7 @@ package br.com.rodrigo.cadastrocliente.dto;
 import br.com.rodrigo.cadastrocliente.entity.Cliente;
 import br.com.rodrigo.cadastrocliente.entity.Endereco;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.hibernate.validator.constraints.br.CPF;
 
 import javax.validation.constraints.Email;
@@ -13,19 +14,27 @@ import java.time.LocalDate;
 public class ClienteRequest {
 
     @NotBlank
+    @JsonProperty
     private String nome;
 
     @CPF
+    @JsonProperty
     private String cpf;
 
     //Ao usar o pattern com shape teremos que criar um SET para esse atributo. Recebolo via construtor nao funciona
     @Past
     @JsonFormat(pattern = "dd/MM/yyyy", shape = JsonFormat.Shape.STRING)
+    @JsonProperty
     private LocalDate dataNascimento;
 
     @Email
+    @JsonProperty
     private String email;
+
+    @JsonProperty
     private String cep;
+
+    @JsonProperty
     private String numero;
 
     public ClienteRequest(String nome, String cpf, String email, String cep, String numero) {
@@ -47,6 +56,14 @@ public class ClienteRequest {
 
     public String getCep() {
         return cep;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public LocalDate getDataNascimento() {
+        return dataNascimento;
     }
 }
 

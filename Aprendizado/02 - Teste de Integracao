@@ -1,0 +1,26 @@
+Teste de Integração - Java, Spring e Mockito.
+
+Agora vamos simular uma requisição cujo retorno será um 404 - Not Found. Para isso vamos fazer uma busca de Cliente por ID inexistente.
+
+1) Na classe ClienteControllerTest criar o método:
+
+    @Test
+    void deveRetonrarNotFoundAoBuscarClienteInexistente(){
+        
+    }
+
+2) Fazer a lógica que irá fazer a requisição de listagem de cliente por id = 500. Ficará assim:
+
+    @Test
+    void deveRetonrarNotFoundAoBuscarClienteInexistente() throws Exception {
+
+        clienteRepository.deleteAll();
+
+        //Fazendo busca por cliente com ID = 500
+        mockMvc.perform(MockMvcRequestBuilders.get("/cliente/{id}", 500)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isNotFound());
+    }
+    
+    Veja que após eu declarar o path da requisição, no caso /cliente/{id} eu passo o valor que será atribuido ao id, no caso 500.
+    No caso a requisição vai ser no path: localhost:8080/cliente/500 e seu retorno status 404 - NotFound.

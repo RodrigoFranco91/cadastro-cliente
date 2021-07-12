@@ -1,0 +1,354 @@
+Teste de Integração - Java, Spring e Mockito.
+
+1) O primeiro passo é criar uma classe de teste. Como o desejo é testar os endpoints da classe ClienteController, eu vou criar a classe
+ClienteControllerTest;
+
+2) Esse se trata de um teste de integração, logo haverá dependencias de outro sistemas e classes para realizar o teste. Para podermos
+testar uma classe controller, temos que subir o contexto web do spring ao rodar o teste, vamos precisar subir também o contexto do
+banco de dados ao rodar o teste. Esses contextos que queremos subir podemos fazer via anotação em cima da classe ClienteControllerTest.
+
+Há diversos contextos que podemos subir via anotações, cada um é chamado de Slice (faias), veja alguns:
+	
+	@WebMvcTest = Sobe o contexto web, para fazermos requisição HTTP. Esse não serve para nós neste momento, pois precissamos
+também do contexto JPA, pois vamos precisar salvar no banco de dados. (A solução no nosso caso usando essa anotação seria usar um
+@MockBean ClienteRepository clienteRepository e @MockBean SitemaEndereco sitemaEndereco);
+
+	@DataJpaTest = Sobe o contexto do Data JPA, no caso teremos acesso aos Repository, EntityManager. Está anotação não pode ser
+	usada ao mesmo tempo com a anotação @WebMvcTest;
+	
+	@SpringBootTest = Vai indicar que a classe será de Teste com Sring e essa anotação vai permitir usarmos outras anotações,
+	por exemplo:
+	
+		@AutoConfigureMockMvc = Vai subir o contexto web, e agora podemos combinar mais anotações com essa;
+		
+		@AutoConfigureDataJpa = Vai subir o contexto Data JPA, e agora podemos combinar mais anotações com essa. Essa também
+		permite configurar o banco de dados a ser utilizado.;
+
+	
+3) Ao utilizar qualquer anotação anterior a classe passa a ser gerenciada pelo Spring, logo poderei injetar objetos nesta classe.
+
+4) Vamos criar o método deveCriarUmCliente(), neste método haverá a lógica para testar o endpoint localhost:8080/cliente, ou seja,
+ao fazer uma requisição Post nesse endpoint um Cliente deverá ser cadastrado. Esse método deve ser anotado com @Test e pode ser anotado
+com @DisplayName. Essa segunda anotação permite descrever o que o método fazerá. Veja como deve ficar:
+	
+	
+    @Test
+    @DisplayName("Esse método deve criar um cadastro de um novo Cliente e retornar o status 201")
+    void deveCriarUmCliente(){
+
+    }
+    
+5) Queremos fazer uma requisição, logo precisamos de um Cliente Http. Devemos então criar na classe o atributo mockMvc do tipo MockMvc,
+este deve ser anotado com @Autowired, pois quem sabe criar ele é o Spring. Veja como ficou:
+
+    @Autowired
+    private MockMvc mockMvc;
+    
+6) Vamos fazer a reqsuição via o atributo mockMvc, o método para isso será o perform. Ficará assim:
+
+    @Test
+    @DisplayName("Esse método deve criar um cadastro de um novo Cliente e retornar o status 201")
+    void deveCriarUmCliente() throws Exception {
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/cliente")
+                .content("{AQUI EU PASSARIA O JSON DE ClienteRequest}"));
+    }
+    
+   Veja que o método deveCriarUmCLiente passo a lançar uma Excpetion.
+   Se deixarmos assim, ficará complicado, pois é chato ficar escrevendo Json na mão.
+   No próximo passo vamos utilizar a classe ClienteRequest!
+   
+7) Vamos facilitar o envio do Body na request, vamos agora usar o objeto ClienteRequest, só que teremos que transformar esse objeto
+em String, pois é deste tipo que o método .content() aceita. Para transformar um objeto em String podemos usar o Mapper do Jackson 
+(Serializador de Json que o Spring utiliza). Para isso vamos criar o atributo jsonMapper do tipo ObjectMapper, este deve ser anotado
+com @Autowired. Veja como deve ficar:
+
+    @Autowired
+    private ObjectMapper jsonMapper;
+    
+    Agora podemos criar a string com o seguinte código:
+    
+            String json = jsonMapper.writeValueAsString(new ClienteRequest("Rodrigo", "664.426.470-05", "rodrigo@gmail.com",
+            "37552162", "100"));
+            
+    E agora podemos passar em .content() a variável json, ficando assim:
+    Obs: Para essa conversão funcionar, tive que anotar todos atributos de ClienteRequest com @JsonProperty. Outra solução seria
+    ter os getters dos atributos e o construtor default.
+    
+    @Test
+    @DisplayName("Esse método deve criar um cadastro de um novo Cliente e retornar o status 201")
+    void deveCriarUmCliente() throws Exception {
+
+        String json = jsonMapper.writeValueAsString(new ClienteRequest("Rodrigo", "664.426.470-05", "rodrigo@gmail.com", "37552162", "100"));
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/cliente")
+                .content(json));
+    }        
+
+8) Vamos agora terminar de configurar a requisição, passando os headers necessários e também configurar a nossa expectativa, ou seja,
+resultado que está vindo na requisição. Ficará assim:
+
+    @Test
+    @DisplayName("Esse método deve criar um cadastro de um novo Cliente e retornar o status 201")
+    void deveCriarUmCliente() throws Exception {
+
+        String json = jsonMapper.writeValueAsString(new ClienteRequest("Rodrigo", "664.426.470-05", "rodrigo@gmail.com", "37552162", "100"));
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+        .andExpect(MockMvcResultMatchers.status().isCreated());
+    }
+    
+    Desse jeito estamos configurando a requisição com o Header ContentType com valor Application_Json
+    E também estamos definindo que o resultado desejado é o Status 201 (isCreated)
+    
+09) Se a nossa classe de teste estiver usando a anotação @WebMvcTest ela não tera o contexto dos objetos ClienteSistema e 
+ClienteRepository, pois o primeiro é do contexto Open Feign e o segundo da Data JPA. Podemos resolver isso de duas formas, a 
+primeira usando uma outra anotação ou a segunda que vamos fazer agora que é Mockando esse objetos. Para isso criamos os objetos com 
+a anotação @MockBean Veja como ficou:
+
+    @MockBean
+    private ClienteRepository clienteRepository;
+
+    @MockBean
+    private SistemaEndereco sistemaEndereco;
+    
+    Estamos simulando "Mockando" esses objetos, logo temos que definir o que vai acontecer quando uma função do sistemaEndereco for
+    chamado. Fiz isso com o seguinte código:
+    
+    Mockito.when(sistemaEndereco.consulta("37552162")).thenReturn(new EnderecoResponse("Rua Mariana", "Santo Antonio", "Pouso", "MG"));
+    
+    Neste caso, quando o método consulta() de sistemaEndereco for chamado vou retornar o objeto EnderecoResponse com os valores
+    informados em seu construtor.
+    
+10) Com a anotação @WebMvcTest já temos funcionando. Depois vamos fazer o teste com mais contextos, mas com essa anotação a classe
+ficou assim:
+
+@WebMvcTest
+class ClienteControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper jsonMapper;
+
+    @MockBean
+    private ClienteRepository clienteRepository;
+
+    @MockBean
+    private SistemaEndereco sistemaEndereco;
+
+    @Test
+    @DisplayName("Esse método deve criar um cadastro de um novo Cliente e retornar o status 201")
+    void deveCriarUmCliente() throws Exception {
+
+        ClienteRequest request = new ClienteRequest("Rodrigo", "664.426.470-05", "rodrigo@gmail.com", "37552162", "100");
+        request.setDataNascimento(LocalDate.of(1991, 7, 1));
+        String json = jsonMapper.writeValueAsString(request);
+
+        Mockito.when(sistemaEndereco.consulta("37552162")).thenReturn(new EnderecoResponse("Rua Mariana", "Santo Antonio", "Pouso", "MG"));
+
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+        .andExpect(MockMvcResultMatchers.status().isCreated());
+    }
+
+}
+
+	Obs: Não temos acesso ao banco de dados com esse contexto, mas poderiamos verificar se o Mock do Repository de fato usou o
+	metodo save, no caso ficaria assim:
+		
+		Mockito.verify(clienteRepository).save(ArgumentMatrchers.any(Cliente.class));
+	
+	Obs: Poderiamos diminuir o codigo da classe fazendo imports estaticos do Mockito, do MockMvcRequestBuilders,do 
+	MockMvcResultMatchers e do MediaType
+
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+Vamos agora de fato fazer um teste que verificará o cadastro foi salvo no banco de dados!
+
+1) Na classe ClienteControllerTest temos que remover a anotação @WebMvcTest e adicionar as: @SpringBootTest, @AutoConfigureMockMvc 
+@AutoConfigureDataJpa;
+
+2) Agora temos o contexto de Data Jpa, logo o atributo clienteRepository não precisa mais ser Mockado. Vamos substituir sua anotação
+@MockBean por @Autowired
+
+3) Agora temos duas opções, usar o objeto real do tipo SistemaEndereco (Client do Feign) ou Mockalo. Se usarmos o real vamos estar
+dependendo de um sistema externo, ou seja, se esse sistema cair não poderemos fazer nada e o teste quebrará. Podemos também 
+mocka-lo e definir uma resposta padão, dessa forma não vamos depender do sistema externo, pois vamos estar simulando ele.
+
+Para usar o objeto real basta remover o atributo:
+
+    @MockBean
+    private SistemaEndereco sistemaEndereco; 
+    
+E remover a linha:
+
+        Mockito.when(sistemaEndereco.consulta("37552162")).thenReturn(new EnderecoResponse("Rua Mariana", "Santo Antonio", "Pouso", "MG"));
+        
+Para usar o Mock basta manter o atributo e a linha. Vamos continuar usando o objeto Mockado;
+
+4) Agora podemos criar um banco de dados para ser usado somente no teste, assim não vamos poluir e nem deletar por acidente o 
+banco de produção! Para isso basta criar ona pasta resources o arquivo application-test.properties com o seguinte conteúdo:
+
+# data source
+spring.datasource.url=jdbc:mysql://localhost/teste_cadastro_cliente
+spring.datasource.username=root
+spring.datasource.password=mysql
+
+# jpa
+spring.jpa.database-platform=org.hibernate.dialect.MySQL5InnoDBDialect
+spring.jpa.hibernate.ddl-auto=update
+
+5) Devemos criar a base de dados (schema) teste_cadastro_cliente
+
+6) O banco de dados de teste só será usado em contexto de test, e para indicar ao Spring que nossa classe ClienteControllerTest é
+sempre executada em contexto de test nós devemos adicionar a anotação: 
+
+	@ActiveProfiles("test")
+
+7) Nosso teste agora já está funcionando. Veja como ficou a classe:
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@AutoConfigureDataJpa
+@ActiveProfiles("test")
+class ClienteControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper jsonMapper;
+
+    //@MockBean
+    @Autowired
+    private ClienteRepository clienteRepository;
+
+    @MockBean
+    private SistemaEndereco sistemaEndereco;
+
+
+    @Test
+    @DisplayName("Esse método deve criar um cadastro de um novo Cliente e retornar o status 201")
+    void deveCriarUmCliente() throws Exception {
+
+        clienteRepository.deleteAll();
+        ClienteRequest request = new ClienteRequest("Rodrigo", "664.426.470-05", "rodrigo@gmail.com", "37552162", "100");
+        request.setDataNascimento(LocalDate.of(1991, 7, 1));
+        String json = jsonMapper.writeValueAsString(request);
+
+        Mockito.when(sistemaEndereco.consulta("37552162")).thenReturn(new EnderecoResponse("Rua Mariana", "Santo Antonio", "Pouso", "MG"));
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+        .andExpect(MockMvcResultMatchers.status().isCreated());
+
+        Boolean resultado = clienteRepository.existsByEmail("rodrigo@gmail.com");
+        Assertions.assertTrue(resultado);
+    }
+
+}
+
+8) O teste agora foi alterado. Agora vamos verificar se a resposta da requisição contem os campos e valores esperados. O código 
+ficou assim:
+
+@Test
+    @DisplayName("Esse método deve criar um cadastro de um novo Cliente e retornar o status 201")
+    void deveCriarUmCliente() throws Exception {
+
+
+        ClienteRequest request = new ClienteRequest("Rodrigo", "664.426.470-05", "rodrigo@gmail.com", "37552162", "100");
+        request.setDataNascimento(LocalDate.of(1991, 7, 1));
+        String json = jsonMapper.writeValueAsString(request);
+
+        Mockito.when(sistemaEndereco.consulta("37552162")).thenReturn(new EnderecoResponse("Rua Mariana", "Santo Antonio", "Pouso", "MG"));
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+        .andExpect(MockMvcResultMatchers.status().isCreated())
+        .andExpect(MockMvcResultMatchers.redirectedUrlPattern("**/cliente/**"))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.id").exists())
+        .andExpect(MockMvcResultMatchers.jsonPath("$.nome").value(request.getNome()))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.email").value("rodrigo@gmail.com"));
+
+
+        //Aqui poderiamos fazer um find do objeto, e depois verificar seus atributos, para ver se foram salvos corretamente!
+        Boolean resultado = clienteRepository.existsByEmail("rodrigo@gmail.com");
+        Assertions.assertTrue(resultado);
+    }
+        
+
+	Obs: O redirectedUrlPattern() é para verificar se o location está vindo na response;
+	No argumento do jsonPath usamos uma expressão, ou seja, usamos um $.NOME_DO_CAMPO, mas neste caso (somente nesse) o uso 
+	do $. é opcional!
+	
+9) Teste finalizado. A classe deverá ficar assim:
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@AutoConfigureDataJpa
+@ActiveProfiles("test")
+class ClienteControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper jsonMapper;
+
+    //@MockBean
+    @Autowired
+    private ClienteRepository clienteRepository;
+
+    @MockBean
+    private SistemaEndereco sistemaEndereco;
+
+
+    @Test
+    @DisplayName("Esse método deve criar um cadastro de um novo Cliente e retornar o status 201")
+    void deveCriarUmCliente() throws Exception {
+
+
+        ClienteRequest request = new ClienteRequest("Rodrigo", "664.426.470-05", "rodrigo@gmail.com", "37552162", "100");
+        request.setDataNascimento(LocalDate.of(1991, 7, 1));
+        String json = jsonMapper.writeValueAsString(request);
+
+        Mockito.when(sistemaEndereco.consulta("37552162")).thenReturn(new EnderecoResponse("Rua Mariana", "Santo Antonio", "Pouso", "MG"));
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+        .andExpect(MockMvcResultMatchers.status().isCreated())
+        .andExpect(MockMvcResultMatchers.redirectedUrlPattern("**/cliente/**"))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.id").exists())
+        .andExpect(MockMvcResultMatchers.jsonPath("$.nome").value(request.getNome()))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.email").value("rodrigo@gmail.com"))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.dataNascimento").value(request.getDataNascimento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
+
+
+        //Aqui poderiamos fazer um find do objeto, e depois verificar seus atributos!
+        Boolean resultado = clienteRepository.existsByEmail("rodrigo@gmail.com");
+        Assertions.assertTrue(resultado);
+    }
+
+}
+
+
+Obs: Usamos o objeto MockMvc anotado com @Autowired, mas muitos criam esse objeto da seguinte forma:
+
+protected MockMvc mockMvc;
+
+@Before
+public void setup() {
+    //build mockMvc
+    mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+}
+

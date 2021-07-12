@@ -42,7 +42,7 @@ public class ClienteController {
         Cliente cliente = request.toModel(endereco);
         clienteRepository.save(cliente);
         URI uri = uriBuilder.path("/cliente/{id}").buildAndExpand(cliente.getId()).toUri();
-        return ResponseEntity.created(uri).build();
+        return ResponseEntity.created(uri).body(new ClienteResponse(cliente));
     }
 
     @GetMapping()
@@ -58,7 +58,7 @@ public class ClienteController {
         if (possivelCliente.isPresent()) {
             return ResponseEntity.ok(new ClienteResponse(possivelCliente.get()));
         }
-        return ResponseEntity.badRequest().build();
+        return ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
