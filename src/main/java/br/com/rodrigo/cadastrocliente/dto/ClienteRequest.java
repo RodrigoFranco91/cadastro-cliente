@@ -1,6 +1,7 @@
 package br.com.rodrigo.cadastrocliente.dto;
 
 import br.com.rodrigo.cadastrocliente.entity.Cliente;
+import br.com.rodrigo.cadastrocliente.entity.Endereco;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import org.hibernate.validator.constraints.br.CPF;
 
@@ -24,19 +25,28 @@ public class ClienteRequest {
 
     @Email
     private String email;
+    private String cep;
+    private String numero;
 
-    public ClienteRequest(String nome, String cpf, String email) {
+    public ClienteRequest(String nome, String cpf, String email, String cep, String numero) {
         this.nome = nome;
         this.cpf = cpf;
         this.email = email;
+        this.cep = cep;
+        this.numero = numero;
     }
 
-    public Cliente toModel() {
-        return new Cliente(this.nome, this.cpf, this.dataNascimento, this.email);
+    public Cliente toModel(Endereco endereco) {
+        return new Cliente(this.nome, this.cpf, this.dataNascimento, this.email, this.cep, this.numero, endereco);
     }
 
     //Criei este método por ter usado @JsonFormat com pattern e shape
     public void setDataNascimento(LocalDate dataNascimento) {
         this.dataNascimento = dataNascimento;
     }
+
+    public String getCep() {
+        return cep;
+    }
 }
+

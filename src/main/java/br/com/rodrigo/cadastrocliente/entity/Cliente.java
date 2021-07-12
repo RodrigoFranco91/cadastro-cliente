@@ -1,9 +1,6 @@
 package br.com.rodrigo.cadastrocliente.entity;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
 import java.time.LocalDate;
 
 @Entity
@@ -17,13 +14,21 @@ public class Cliente {
     private LocalDate dataNascimento;
     private String email;
     private Integer idade;
+    private String cep;
+    private String numero;
 
-    public Cliente(String nome, String cpf, LocalDate dataNascimento, String email) {
+    @Embedded
+    private Endereco endereco;
+
+    public Cliente(String nome, String cpf, LocalDate dataNascimento, String email, String cep, String numero, Endereco endereco) {
         this.nome = nome;
         this.cpf = cpf;
         this.dataNascimento = dataNascimento;
         this.email = email;
         this.idade = calculaIdade(dataNascimento);
+        this.cep = cep;
+        this.numero = numero;
+        this.endereco = endereco;
     }
 
     //Apenas para a JPA
@@ -63,5 +68,17 @@ public class Cliente {
 
     public Integer getIdade() {
         return idade;
+    }
+
+    public String getCep() {
+        return cep;
+    }
+
+    public String getNumero() {
+        return numero;
+    }
+
+    public Endereco getEndereco() {
+        return endereco;
     }
 }

@@ -1,6 +1,8 @@
 package br.com.rodrigo.cadastrocliente.dto;
 
 import br.com.rodrigo.cadastrocliente.entity.Cliente;
+import br.com.rodrigo.cadastrocliente.entity.Endereco;
+import br.com.rodrigo.cadastrocliente.feign.EnderecoResponse;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDate;
@@ -17,6 +19,9 @@ public class ClienteResponse {
     private LocalDate dataNascimento;
     private String email;
     private Integer idade;
+    private EnderecoDto endereco;
+    private String numero;
+    private String cep;
 
     public ClienteResponse(Cliente cliente) {
         this.id = cliente.getId();
@@ -25,6 +30,11 @@ public class ClienteResponse {
         this.dataNascimento = cliente.getDataNascimento();
         this.email = cliente.getEmail();
         this.idade = cliente.getIdade();
+        EnderecoDto response = new EnderecoDto(cliente.getEndereco());
+        this.endereco = response;
+        this.numero = cliente.getNumero();
+        this.cep = cliente.getCep();
+
     }
 
     public Long getId() {
@@ -51,8 +61,19 @@ public class ClienteResponse {
         return idade;
     }
 
+    public EnderecoDto getEndereco() {
+        return endereco;
+    }
 
-    public static List<ClienteResponse> convertListModelToResponse(List<Cliente> clientes){
+    public String getNumero() {
+        return numero;
+    }
+
+    public String getCep() {
+        return cep;
+    }
+
+    public static List<ClienteResponse> convertListModelToResponse(List<Cliente> clientes) {
         return clientes.stream().map(ClienteResponse::new).collect(Collectors.toList());
     }
 }
